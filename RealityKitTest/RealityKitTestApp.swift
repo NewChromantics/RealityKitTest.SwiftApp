@@ -10,8 +10,13 @@ import SwiftUI
 @main
 struct RealityKitTestApp: App {
     var body: some Scene {
-        WindowGroup {
+        WindowGroup("RealityKit Viewer") {
             ContentView()
         }
+		
+		WindowGroup("SOG Explorer") {
+			SOGExplorerView()
+		}
+		.defaultSize(width: 900, height: 700)
     }
 }

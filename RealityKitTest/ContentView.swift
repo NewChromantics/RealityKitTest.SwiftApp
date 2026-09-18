@@ -8,6 +8,7 @@
 
 import SwiftUI
 import RealityKit
+import UniformTypeIdentifiers
 
 struct ContentView: View {
 	var body: some View {
@@ -34,18 +35,26 @@ struct CubeSceneView: View {
 
 	// Entities we need to update each frame
 	@State private var cameraEntity = Entity()
+	@State private var rootEntity: AnchorEntity? = nil
+	@State private var splatEntity: Entity? = nil
 
 	// Scroll-wheel event monitor for zooming
 	@State private var scrollMonitor: Any? = nil
 	
 	// Gaussian splat URL
 	@State private var splatURL: URL? = Bundle.main.url(forResource: "lego_60k", withExtension: "ply")
+	@State private var isLoadingSplat = false
+	@State private var loadingFileName: String = ""
+	@State private var dragActive = false
+	@State private var errorMessage: String?
+	@State private var showError = false
 	
 	var body: some View {
 		RealityView { content in
 			// Root anchor (world content, no AR tracking needed)
 			let root = AnchorEntity(world: .zero)
 			content.add(root)
+			rootEntity = root
 			
 			// Lighting
 			let light = DirectionalLight()
@@ -77,15 +86,7 @@ struct CubeSceneView: View {
 			if let plyURL = splatURL {
 				print("ContentView: found PLY in bundle at \(plyURL.path)")
 				Task {
-					if let splatEntity = await loadGaussianSplat(from: plyURL) {
-						// Position it in the center, slightly above the cubes
-						splatEntity.position = [0, 0.8, 0]
-						splatEntity.scale = [0.5, 0.5, 0.5] // Scale down if needed
-						root.addChild(splatEntity)
-						print("ContentView: splat entity added to scene at \(splatEntity.position), scale \(splatEntity.scale)")
-					} else {
-						print("ContentView: loadGaussianSplat returned nil")
-					}
+					await loadAndDisplaySplat(from: plyURL)
 				}
 			} else {
 				print("ContentView: lego_60k.ply NOT found in app bundle - check Target Membership / Copy Bundle Resources")
@@ -107,6 +108,38 @@ struct CubeSceneView: View {
 			.fixedSize()
 			.padding(12)
 		}
+		.overlay(alignment: .center) {
+			if isLoadingSplat {
+				VStack(spacing: 12) {
+					ProgressView()
+						.scaleEffect(1.5)
+					Text("Loading...")
+						.font(.headline)
+					if !loadingFileName.isEmpty {
+						Text(loadingFileName)
+							.font(.caption)
+							.foregroundStyle(.secondary)
+					}
+				}
+				.padding(24)
+				.background(.regularMaterial)
+				.cornerRadius(12)
+			}
+		}
+		.overlay(alignment: .center) {
+			if dragActive {
+				VStack(spacing: 16) {
+					Image(systemName: "arrow.down.circle.fill")
+						.font(.system(size: 64))
+						.foregroundStyle(.tint)
+					Text("Drop PLY or SOG file")
+						.font(.title2)
+						.fontWeight(.semibold)
+				}
+				.frame(maxWidth: .infinity, maxHeight: .infinity)
+				.background(.regularMaterial.opacity(0.9))
+			}
+		}
 		.onChange(of: cameraMode) {
 			applyCameraMode()
 		}
@@ -126,6 +159,18 @@ struct CubeSceneView: View {
 					updateCameraTransform()
 				}
 		)
+		.onDrop(of: [.fileURL], isTargeted: $dragActive) { providers in
+			handleDrop(providers: providers)
+		}
+		.alert("Error Loading Splat", isPresented: $showError) {
+			Button("OK") {
+				showError = false
+			}
+		} message: {
+			if let errorMessage = errorMessage {
+				Text(errorMessage)
+			}
+		}
 		.onAppear {
 			// SwiftUI has no scroll-wheel gesture, so listen for the AppKit event directly
 			scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
@@ -185,16 +230,74 @@ struct CubeSceneView: View {
 		}
 	}
 	
-	/// Load a Gaussian Splat from a PLY file URL
-	private func loadGaussianSplat(from url: URL) async -> Entity?
+	/// Load a Gaussian Splat from a PLY or SOG file URL
+	private func loadGaussianSplat(from url: URL) async throws -> Entity
 	{
+		// RealityKit has no PLY/SOG importer, so parse the file
+		// and build a GaussianSplatComponent from its data
+		return try await GaussianSplatLoader.loadEntity(from: url)
+	}
+	
+	/// Load and display a splat, replacing any existing one
+	@MainActor
+	private func loadAndDisplaySplat(from url: URL) async {
+		isLoadingSplat = true
+		loadingFileName = url.lastPathComponent
+		defer { 
+			isLoadingSplat = false
+			loadingFileName = ""
+		}
+		
+		// Remove existing splat if any
+		if let existingSplat = splatEntity {
+			existingSplat.removeFromParent()
+			splatEntity = nil
+		}
+		
 		do {
-			// RealityKit has no PLY importer, so parse the file with PopPly
-			// and build a GaussianSplatComponent from its data
-			return try await GaussianSplatLoader.loadEntity(from: url)
+			let newSplat = try await loadGaussianSplat(from: url)
+			// Position it in the center, slightly above the cubes
+			newSplat.position = [0, 0.8, 0]
+			newSplat.scale = [0.5, 0.5, 0.5] // Scale down if needed
+			
+			if let root = rootEntity {
+				root.addChild(newSplat)
+				splatEntity = newSplat
+				print("ContentView: splat entity added to scene at \(newSplat.position), scale \(newSplat.scale)")
+			}
 		} catch {
 			print("Failed to load Gaussian Splat: \(error)")
-			return nil
+			errorMessage = error.localizedDescription
+			showError = true
 		}
+	}
+	
+	/// Handle dropped files
+	private func handleDrop(providers: [NSItemProvider]) -> Bool {
+		guard let provider = providers.first else { return false }
+		
+		provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, error in
+			guard let data = item as? Data,
+				  let url = URL(dataRepresentation: data, relativeTo: nil) else {
+				if let error = error {
+					print("ContentView: drop error: \(error)")
+				}
+				return
+			}
+			
+			let fileExtension = url.pathExtension.lowercased()
+			guard fileExtension == "ply" || fileExtension == "sog" else {
+				print("ContentView: dropped file is not a .ply or .sog file")
+				return
+			}
+			
+			print("ContentView: dropped file: \(url.lastPathComponent)")
+			
+			Task { @MainActor in
+				await loadAndDisplaySplat(from: url)
+			}
+		}
+		
+		return true
 	}
 }

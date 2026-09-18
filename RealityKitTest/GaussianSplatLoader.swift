@@ -2,12 +2,14 @@
 //  GaussianSplatLoader.swift
 //  RealityKitTest
 //
-//  Imports 3D Gaussian Splat data from an INRIA-style PLY file (the format
-//  written by the original 3DGS training pipeline) and produces an Entity
-//  with a GaussianSplatComponent.
+//  Imports 3D Gaussian Splat data from an INRIA-style PLY file or SOG (Splat Object Geometry) file
+//  and produces an Entity with a GaussianSplatComponent.
 //
-//  RealityKit doesn't load splat files directly - we parse the PLY with
-//  PopPly, pack the per-splat properties into an interleaved LowLevelBuffer,
+//  PLY: The format written by the original 3DGS training pipeline, parsed with PopPly.
+//  SOG: A more efficient binary format with header and packed splat data.
+//
+//  RealityKit doesn't load splat files directly - we parse the data,
+//  pack the per-splat properties into an interleaved LowLevelBuffer,
 //  and describe the layout with GaussianSplatResource.BufferDescriptors.
 //
 
@@ -15,6 +17,8 @@ import Foundation
 import Metal
 import RealityKit
 import PopPly
+import UniformTypeIdentifiers
+import Compression
 
 nonisolated enum GaussianSplatLoader
 {
@@ -23,6 +27,9 @@ nonisolated enum GaussianSplatLoader
 		case missingVertexElement
 		case missingProperty(String)
 		case unsupportedSphericalHarmonicCount(Int)
+		case unsupportedFileFormat
+		case invalidSOGHeader
+		case corruptedSOGData
 
 		var errorDescription: String?
 		{
@@ -34,6 +41,12 @@ nonisolated enum GaussianSplatLoader
 					"PLY vertex element is missing property \"\(name)\""
 				case .unsupportedSphericalHarmonicCount(let count):
 					"Unsupported number of f_rest_* spherical harmonic properties: \(count)"
+				case .unsupportedFileFormat:
+					"Unsupported file format (expected .ply or .sog)"
+				case .invalidSOGHeader:
+					"Invalid SOG file header (not a binary splat format)"
+				case .corruptedSOGData:
+					"SOG file data is corrupted or incomplete"
 			}
 		}
 	}
@@ -54,11 +67,28 @@ nonisolated enum GaussianSplatLoader
 	{
 		print("GaussianSplatLoader: parsing \(url.lastPathComponent)...")
 		let startTime = Date()
-		let splats = try await Task.detached(priority: .userInitiated)
+		
+		let splats: SplatData
+		let fileExtension = url.pathExtension.lowercased()
+		
+		switch fileExtension
 		{
-			try parse(url: url)
+			case "ply":
+				splats = try await Task.detached(priority: .userInitiated)
+				{
+					try parsePLY(url: url)
+				}
+				.value
+			case "sog":
+				splats = try await Task.detached(priority: .userInitiated)
+				{
+					try parseSOG(url: url)
+				}
+				.value
+			default:
+				throw Error.unsupportedFileFormat
 		}
-		.value
+		
 		print("GaussianSplatLoader: parsed \(splats.count) splats (\(splats.floatsPerSplat) floats each) in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
 
 		return try makeEntity(from: splats)
@@ -66,7 +96,7 @@ nonisolated enum GaussianSplatLoader
 
 	// MARK: - PLY parsing
 
-	nonisolated private static func parse(url: URL) throws -> SplatData
+	nonisolated private static func parsePLY(url: URL) throws -> SplatData
 	{
 		let collector = SplatCollector()
 		try PLYReader.read(url: url, to: collector)
@@ -80,6 +110,149 @@ nonisolated enum GaussianSplatLoader
 						 floatsPerSplat: collector.floatsPerSplat,
 						 sphericalHarmonicsFloats: 3 + collector.restIndices.count,
 						 interleaved: collector.interleaved)
+	}
+	
+	// MARK: - SOG parsing
+	
+	/// SOG file format can be either:
+	/// 1. Binary format with header (32 bytes):
+	///    - Magic number: "SOG\0" (4 bytes)
+	///    - Version: UInt32 (4 bytes)
+	///    - Splat count: UInt32 (4 bytes)
+	///    - SH degree: UInt32 (4 bytes) - 0, 1, 2, or 3
+	///    - Reserved: 16 bytes
+	///    - Data: Per splat - position(3) + scale(3) + rotation(4) + opacity(1) + SH coefficients
+	///
+	/// 2. ZIP archive containing WebP images (parsed using SOGWebPParser)
+	nonisolated private static func parseSOG(url: URL) throws -> SplatData
+	{
+		let data = try Data(contentsOf: url)
+		
+		print("GaussianSplatLoader: SOG file size: \(data.count) bytes")
+		
+		// Check if this is a ZIP file (starts with PK signature)
+		let pkSignature = Data([0x50, 0x4B]) // "PK"
+		if data.count >= 2 && data.prefix(2) == pkSignature
+		{
+			print("GaussianSplatLoader: detected ZIP archive (WebP-based SOG format)")
+			return try parseSOGWebP(url: url)
+		}
+		
+		// Parse header for binary format
+		guard data.count >= 32 else
+		{
+			print("GaussianSplatLoader: file too small - need at least 32 bytes for header")
+			throw Error.invalidSOGHeader
+		}
+		
+		// Check magic number "SOG\0"
+		let magicBytes = data.prefix(4)
+		let expectedMagic = Data([0x53, 0x4F, 0x47, 0x00]) // "SOG\0"
+		
+		// Debug: print actual bytes
+		let magicHex = magicBytes.map { String(format: "%02X", $0) }.joined(separator: " ")
+		let magicString = String(data: magicBytes, encoding: .utf8) ?? "(non-UTF8)"
+		print("GaussianSplatLoader: Magic bytes: \(magicHex) (\(magicString))")
+		
+		guard magicBytes == expectedMagic else
+		{
+			print("GaussianSplatLoader: invalid magic number - expected 'SOG\\0' (53 4F 47 00)")
+			throw Error.invalidSOGHeader
+		}
+		
+		// Read header fields
+		let version = data.withUnsafeBytes { $0.load(fromByteOffset: 4, as: UInt32.self) }
+		let splatCount = Int(data.withUnsafeBytes { $0.load(fromByteOffset: 8, as: UInt32.self) })
+		let shDegree = Int(data.withUnsafeBytes { $0.load(fromByteOffset: 12, as: UInt32.self) })
+		
+		print("GaussianSplatLoader: SOG version \(version), \(splatCount) splats, SH degree \(shDegree)")
+		
+		guard shDegree >= 0 && shDegree <= 3 else
+		{
+			throw Error.unsupportedSphericalHarmonicCount(shDegree)
+		}
+		
+		// Calculate expected data size
+		let shCoefficientsPerChannel = [1, 4, 9, 16][shDegree] // degree 0: 1, degree 1: 4, degree 2: 9, degree 3: 16
+		let sphericalHarmonicsFloats = shCoefficientsPerChannel * 3 // RGB channels
+		let floatsPerSplat = 11 + sphericalHarmonicsFloats // position(3) + scale(3) + rotation(4) + opacity(1) + SH
+		let expectedDataSize = 32 + (splatCount * floatsPerSplat * MemoryLayout<Float>.size)
+		
+		print("GaussianSplatLoader: expected \(expectedDataSize) bytes, got \(data.count) bytes")
+		
+		guard data.count >= expectedDataSize else
+		{
+			throw Error.corruptedSOGData
+		}
+		
+		// Extract interleaved float data
+		var interleaved = [Float](repeating: 0, count: splatCount * floatsPerSplat)
+		let dataOffset = 32
+		data.withUnsafeBytes
+		{
+			(buffer: UnsafeRawBufferPointer) in
+			let floatBuffer = buffer.baseAddress!.advanced(by: dataOffset).assumingMemoryBound(to: Float.self)
+			interleaved.withUnsafeMutableBufferPointer
+			{
+				dest in
+				dest.baseAddress!.initialize(from: floatBuffer, count: splatCount * floatsPerSplat)
+			}
+		}
+		
+		return SplatData(count: splatCount,
+						 floatsPerSplat: floatsPerSplat,
+						 sphericalHarmonicsFloats: sphericalHarmonicsFloats,
+						 interleaved: interleaved)
+	}
+	
+	// MARK: - SOG WebP Format Parsing
+	
+	/// Parse SOG files in WebP format (ZIP archive)
+	nonisolated private static func parseSOGWebP(url: URL) throws -> SplatData
+	{
+		let sogData = try SOGWebPParser.parse(url: url)
+		
+		// Convert SOGSplatData to our interleaved format
+		// Layout: position(3) + scale(3) + rotation(4) + opacity(1) + sh0(3)
+		let floatsPerSplat = 14 // 3 + 3 + 4 + 1 + 3
+		let sphericalHarmonicsFloats = 3 // Just SH0 for now
+		
+		var interleaved: [Float] = []
+		interleaved.reserveCapacity(sogData.count * floatsPerSplat)
+		
+		for i in 0..<sogData.count
+		{
+			// Position
+			interleaved.append(sogData.positions[i].x)
+			interleaved.append(sogData.positions[i].y)
+			interleaved.append(sogData.positions[i].z)
+			
+			// Scale (stored as log values, will be exponential later)
+			interleaved.append(sogData.scales[i].x)
+			interleaved.append(sogData.scales[i].y)
+			interleaved.append(sogData.scales[i].z)
+			
+			// Rotation (quaternion in RealityKit order: r, x, y, z)
+			let quat = sogData.rotations[i]
+			interleaved.append(quat.real)
+			interleaved.append(quat.imag.x)
+			interleaved.append(quat.imag.y)
+			interleaved.append(quat.imag.z)
+			
+			// Opacity (will be sigmoid activated later)
+			// For now, use a default value since SOG doesn't store explicit opacity
+			interleaved.append(0.0)
+			
+			// SH0 colors
+			interleaved.append(sogData.sh0Colors[i].x)
+			interleaved.append(sogData.sh0Colors[i].y)
+			interleaved.append(sogData.sh0Colors[i].z)
+		}
+		
+		return SplatData(count: sogData.count,
+						 floatsPerSplat: floatsPerSplat,
+						 sphericalHarmonicsFloats: sphericalHarmonicsFloats,
+						 interleaved: interleaved)
 	}
 
 	// PLYReader delegate that resolves property indices from the header,

@@ -7,11 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BF2F9DA6305DA61700480502 /* SOGWebPFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF2F9DA5305DA61700480502 /* SOGWebPFormat.swift */; };
+		BF2F9DA8305DA67700480502 /* SOGExplorerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF2F9DA7305DA67700480502 /* SOGExplorerView.swift */; };
 		BF5308EF305D655600611B5D /* PopPly in Frameworks */ = {isa = PBXBuildFile; productRef = BF5308EE305D655600611B5D /* PopPly */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		BF21E817305C1BEB00557A54 /* RealityKitTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RealityKitTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BF2F9DA5305DA61700480502 /* SOGWebPFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SOGWebPFormat.swift; sourceTree = "<group>"; };
+		BF2F9DA7305DA67700480502 /* SOGExplorerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SOGExplorerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -38,6 +42,8 @@
 			isa = PBXGroup;
 			children = (
 				BF21E819305C1BEB00557A54 /* RealityKitTest */,
+				BF2F9DA5305DA61700480502 /* SOGWebPFormat.swift */,
+				BF2F9DA7305DA67700480502 /* SOGExplorerView.swift */,
 				BF21E818305C1BEB00557A54 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -128,6 +134,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BF2F9DA8305DA67700480502 /* SOGExplorerView.swift in Sources */,
+				BF2F9DA6305DA61700480502 /* SOGWebPFormat.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,0 +1,15 @@
+{
+  "originHash" : "5f14b9252662bc0955ffbbf8652a2470ec6ba5f6d444fcbc8da5eee65575b0ce",
+  "pins" : [
+    {
+      "identity" : "popply.swiftpackage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/NewChromantics/PopPly.SwiftPackage",
+      "state" : {
+        "branch" : "main",
+        "revision" : "5454f211e664fcf150cff12a463b4f6154bcde5f"
+      }
+    }
+  ],
+  "version" : 3
+}

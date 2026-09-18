@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BF5308EF305D655600611B5D /* PopPly in Frameworks */ = {isa = PBXBuildFile; productRef = BF5308EE305D655600611B5D /* PopPly */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		BF21E817305C1BEB00557A54 /* RealityKitTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RealityKitTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BF5308EF305D655600611B5D /* PopPly in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = RealityKitTest;
 			packageProductDependencies = (
+				BF5308EE305D655600611B5D /* PopPly */,
 			);
 			productName = RealityKitTest;
 			productReference = BF21E817305C1BEB00557A54 /* RealityKitTest.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = BF21E80E305C1BEB00557A54;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				BF5308ED305D655600611B5D /* XCRemoteSwiftPackageReference "PopPly" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BF21E818305C1BEB00557A54 /* Products */;
 			projectDirPath = "";
@@ -267,7 +276,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.newchromantics.RealityKitTest;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -311,7 +320,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.newchromantics.RealityKitTest;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -351,6 +360,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		BF5308ED305D655600611B5D /* XCRemoteSwiftPackageReference "PopPly" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/NewChromantics/PopPly.SwiftPackage";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BF5308EE305D655600611B5D /* PopPly */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BF5308ED305D655600611B5D /* XCRemoteSwiftPackageReference "PopPly" */;
+			productName = PopPly;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = BF21E80F305C1BEB00557A54 /* Project object */;
 }

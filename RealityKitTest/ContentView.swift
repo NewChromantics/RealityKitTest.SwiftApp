@@ -63,6 +63,16 @@ struct CubeSceneView: View {
 				root.addChild(cube)
 			}
 			
+			// Custom Metal shader example: geometry + per-vertex data
+			// supplied from [Float] arrays (see BufferShaderExample.swift)
+			do {
+				let shaderEntity = try BufferShaderExample.makeEntity()
+				shaderEntity.position = [0, 1.2, -1.5]
+				root.addChild(shaderEntity)
+			} catch {
+				print("Failed to create buffer shader example: \(error)")
+			}
+			
 			// Gaussian Splat from PLY file
 			if let plyURL = splatURL {
 				print("ContentView: found PLY in bundle at \(plyURL.path)")

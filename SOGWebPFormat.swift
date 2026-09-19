@@ -154,17 +154,51 @@ enum SOGWebPParser {
 		// Parse higher-order SH if present
 		let shNCoefficients = try? parseSHN(tempDir: tempDir, metadata: metadata)
 		
-		print("SOGWebPParser: successfully parsed \(positions.count) splats")
+		// Apply standard PLY/SOG file convention: 180° rotation around Z-axis
+		// File coordinates = rotate(world, 180° around Z)
+		// We need to apply the inverse to get world coordinates
+		print("SOGWebPParser: applying standard PLY/SOG coordinate convention (180° Z rotation)...")
+		let correctedPositions = applyFileConvention(positions: positions)
+		let correctedRotations = applyFileConvention(rotations: rotations)
+		
+		print("SOGWebPParser: successfully parsed \(correctedPositions.count) splats")
 		
 		return SOGSplatData(
 			count: metadata.count,
-			positions: positions,
+			positions: correctedPositions,
 			scales: scales,
-			rotations: rotations,
+			rotations: correctedRotations,
 			sh0Colors: sh0Colors,
 			shNCoefficients: shNCoefficients,
 			metadata: metadata
 		)
+	}
+	
+	// MARK: - Coordinate Convention
+	
+	/// Apply the standard PLY/SOG file convention
+	/// File coordinates are rotated 180° around Z from world coordinates
+	/// This applies the inverse transform to convert file -> world
+	private static func applyFileConvention(positions: [SIMD3<Float>]) -> [SIMD3<Float>] {
+		// 180° rotation around Z axis: negate X and Y, keep Z
+		let rotationMatrix = simd_float3x3(
+			SIMD3<Float>(-1, 0, 0),
+			SIMD3<Float>(0, -1, 0),
+			SIMD3<Float>(0, 0, 1)
+		)
+		
+		return positions.map { rotationMatrix * $0 }
+	}
+	
+	/// Apply the standard PLY/SOG file convention to rotations
+	/// Rotations need to be composed with the coordinate frame rotation
+	private static func applyFileConvention(rotations: [simd_quatf]) -> [simd_quatf] {
+		// 180° rotation around Z axis as quaternion
+		// Rotation by π around Z: (x=0, y=0, z=sin(π/2), w=cos(π/2)) = (0, 0, 1, 0)
+		let correctionQuat = simd_quatf(ix: 0, iy: 0, iz: 1, r: 0)
+		
+		// Apply correction: correctionQuat * originalQuat
+		return rotations.map { correctionQuat * $0 }
 	}
 	
 	// MARK: - Position Parsing
@@ -193,29 +227,61 @@ enum SOGWebPParser {
 		var positions: [SIMD3<Float>] = []
 		positions.reserveCapacity(metadata.count)
 		
-		// Each pixel contains data for one splat
-		// Lower image has X and Y, upper image has Z
-		let pixelsPerRow = lowerData.width
+		// The WebP images store data in a grid layout
+		// We need to read sequentially through the pixels
+		let totalPixels = lowerData.width * lowerData.height
+		print("SOGWebPParser: lower image: \(lowerData.width)x\(lowerData.height) = \(totalPixels) pixels")
+		print("SOGWebPParser: upper image: \(upperData.width)x\(upperData.height) pixels")
+		print("SOGWebPParser: position range: \(range), offset: \(offset)")
 		
-		for i in 0..<metadata.count {
-			let lowerIdx = i * 4 // RGBA
-			let upperIdx = i * 4
+		// Each pixel encodes position using 16-bit precision per axis
+		// Per PlayCanvas spec: each axis uses the SAME channel from both images
+		// - X axis: channel 0 from lower (low byte) + channel 0 from upper (high byte)
+		// - Y axis: channel 1 from lower (low byte) + channel 1 from upper (high byte)  
+		// - Z axis: channel 2 from lower (low byte) + channel 2 from upper (high byte)
+		for i in 0..<min(metadata.count, totalPixels) {
+			let idx = i * lowerData.bytesPerPixel
 			
-			// Normalize from [0, 255] to [0, 1]
-			let normX = Float(lowerData.data[lowerIdx]) / 255.0
-			let normY = Float(lowerData.data[lowerIdx + 1]) / 255.0
-			let normZ = Float(upperData.data[upperIdx]) / 255.0
+			// Build 16-bit value for each axis: (upper << 8) | lower
+			let xValue = (UInt16(upperData.data[idx]) << 8) | UInt16(lowerData.data[idx])
+			let yValue = (UInt16(upperData.data[idx + 1]) << 8) | UInt16(lowerData.data[idx + 1])
+			let zValue = (UInt16(upperData.data[idx + 2]) << 8) | UInt16(lowerData.data[idx + 2])
 			
-			// Denormalize to world coordinates
+			// Normalize from [0, 65535] to [0, 1]
+			let normX = Float(xValue) / 65535.0
+			let normY = Float(yValue) / 65535.0
+			let normZ = Float(zValue) / 65535.0
+			
+			// Apply unlog function as per PlayCanvas spec
+			func unlog(_ n: Double) -> Double {
+				(n < 0 ? -1.0 : (n > 0 ? 1.0 : 0.0)) * (exp(abs(n)) - 1.0)
+			}
+			
+			// Denormalize using mins/maxs, then apply unlog
 			let position = SIMD3<Float>(
-				normX * range.x + offset.x,
-				normY * range.y + offset.y,
-				normZ * range.z + offset.z
+				Float(unlog(Double(mins[0]) + Double(range.x) * Double(normX))),
+				Float(unlog(Double(mins[1]) + Double(range.y) * Double(normY))),
+				Float(unlog(Double(mins[2]) + Double(range.z) * Double(normZ)))
 			)
+			
+			if i < 3 {
+				print("SOGWebPParser: splat \(i)")
+				print("  16-bit: x=\(xValue), y=\(yValue), z=\(zValue)")
+				print("  normalized: (\(normX), \(normY), \(normZ))")
+				print("  world: \(position)")
+			}
 			
 			positions.append(position)
 		}
 		
+		print("SOGWebPParser: decoded \(positions.count) positions")
+		// Debug: print first few positions
+		if positions.count > 0 {
+			print("SOGWebPParser: first position: \(positions[0])")
+			if positions.count > 1 {
+				print("SOGWebPParser: second position: \(positions[1])")
+			}
+		}
 		return positions
 	}
 	
@@ -231,16 +297,21 @@ enum SOGWebPParser {
 		let scaleData = try loadWebPAsFloats(tempDir: tempDir, filename: metadata.scales.files[0])
 		let codebook = metadata.scales.codebook.map { Float($0) }
 		
+		print("SOGWebPParser: scale codebook has \(codebook.count) entries")
+		print("SOGWebPParser: scale codebook range: [\(codebook.min() ?? 0), \(codebook.max() ?? 0)]")
+		
 		var scales: [SIMD3<Float>] = []
 		scales.reserveCapacity(metadata.count)
 		
-		for i in 0..<metadata.count {
-			let idx = i * 4 // RGBA
+		let totalPixels = scaleData.width * scaleData.height
+		
+		for i in 0..<min(metadata.count, totalPixels) {
+			let idx = i * scaleData.bytesPerPixel
 			
 			// Each color channel is an index into the codebook
-			let indexX = Int(scaleData.data[idx])
-			let indexY = Int(scaleData.data[idx + 1])
-			let indexZ = Int(scaleData.data[idx + 2])
+			let indexX = min(Int(scaleData.data[idx]), codebook.count - 1)
+			let indexY = min(Int(scaleData.data[idx + 1]), codebook.count - 1)
+			let indexZ = min(Int(scaleData.data[idx + 2]), codebook.count - 1)
 			
 			let scale = SIMD3<Float>(
 				codebook[indexX],
@@ -251,6 +322,10 @@ enum SOGWebPParser {
 			scales.append(scale)
 		}
 		
+		print("SOGWebPParser: decoded \(scales.count) scales")
+		if scales.count > 0 {
+			print("SOGWebPParser: first scale: \(scales[0])")
+		}
 		return scales
 	}
 	
@@ -268,22 +343,26 @@ enum SOGWebPParser {
 		var quaternions: [simd_quatf] = []
 		quaternions.reserveCapacity(metadata.count)
 		
-		for i in 0..<metadata.count {
-			let idx = i * 4 // RGBA
+		let totalPixels = quatData.width * quatData.height
+		
+		for i in 0..<min(metadata.count, totalPixels) {
+			let idx = i * quatData.bytesPerPixel
 			
 			// Quaternions stored as normalized [0, 255] -> [-1, 1]
+			// RGBA = x, y, z, w
 			let x = (Float(quatData.data[idx]) / 255.0) * 2.0 - 1.0
 			let y = (Float(quatData.data[idx + 1]) / 255.0) * 2.0 - 1.0
 			let z = (Float(quatData.data[idx + 2]) / 255.0) * 2.0 - 1.0
 			let w = (Float(quatData.data[idx + 3]) / 255.0) * 2.0 - 1.0
 			
-			// Normalize quaternion
+			// Create quaternion (RealityKit uses r, x, y, z order)
 			let quat = simd_quatf(ix: x, iy: y, iz: z, r: w)
 			let normalized = simd_normalize(quat)
 			
 			quaternions.append(normalized)
 		}
 		
+		print("SOGWebPParser: decoded \(quaternions.count) quaternions")
 		return quaternions
 	}
 	
@@ -299,16 +378,20 @@ enum SOGWebPParser {
 		let sh0Data = try loadWebPAsFloats(tempDir: tempDir, filename: metadata.sh0.files[0])
 		let codebook = metadata.sh0.codebook.map { Float($0) }
 		
+		print("SOGWebPParser: SH0 codebook has \(codebook.count) entries")
+		
 		var colors: [SIMD3<Float>] = []
 		colors.reserveCapacity(metadata.count)
 		
-		for i in 0..<metadata.count {
-			let idx = i * 4 // RGBA
+		let totalPixels = sh0Data.width * sh0Data.height
+		
+		for i in 0..<min(metadata.count, totalPixels) {
+			let idx = i * sh0Data.bytesPerPixel
 			
 			// Each color channel is an index into the codebook
-			let indexR = Int(sh0Data.data[idx])
-			let indexG = Int(sh0Data.data[idx + 1])
-			let indexB = Int(sh0Data.data[idx + 2])
+			let indexR = min(Int(sh0Data.data[idx]), codebook.count - 1)
+			let indexG = min(Int(sh0Data.data[idx + 1]), codebook.count - 1)
+			let indexB = min(Int(sh0Data.data[idx + 2]), codebook.count - 1)
 			
 			let color = SIMD3<Float>(
 				codebook[indexR],
@@ -319,6 +402,7 @@ enum SOGWebPParser {
 			colors.append(color)
 		}
 		
+		print("SOGWebPParser: decoded \(colors.count) colors")
 		return colors
 	}
 	
@@ -343,6 +427,7 @@ enum SOGWebPParser {
 		let data: [UInt8]
 		let width: Int
 		let height: Int
+		let bytesPerPixel: Int
 	}
 	
 	private static func loadWebPAsFloats(tempDir: URL, filename: String) throws -> WebPImageData {
@@ -354,23 +439,46 @@ enum SOGWebPParser {
 		
 		let webpData = try Data(contentsOf: fileURL)
 		
-		// Decode WebP using NSImage
-		guard let image = NSImage(data: webpData),
-			  let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+		// Decode WebP using NSBitmapImageRep directly
+		// This gives us more control over the pixel format
+		guard let bitmapRep = NSBitmapImageRep(data: webpData) else {
 			throw Error.failedToDecodeWebP(filename)
 		}
 		
-		let width = cgImage.width
-		let height = cgImage.height
+		let width = bitmapRep.pixelsWide
+		let height = bitmapRep.pixelsHigh
+		let bytesPerPixel = bitmapRep.bitsPerPixel / 8
 		
-		// Extract RGBA bytes
-		guard let dataProvider = cgImage.dataProvider,
-			  let pixelData = dataProvider.data as Data? else {
+		print("SOGWebPParser: WebP details - \(width)x\(height), \(bitmapRep.bitsPerPixel) bpp, \(bitmapRep.bytesPerRow) bytes/row")
+		print("SOGWebPParser: format - samples/pixel: \(bitmapRep.samplesPerPixel), alpha: \(bitmapRep.hasAlpha)")
+		
+		// Get raw pixel data
+		guard let rawBitmapData = bitmapRep.bitmapData else {
 			throw Error.failedToDecodeWebP(filename)
 		}
 		
-		let bytes = [UInt8](pixelData)
+		// Copy the data
+		let dataLength = height * bitmapRep.bytesPerRow
+		var pixelData = [UInt8](repeating: 0, count: width * height * 4) // Always use 4 bytes per pixel output
 		
-		return WebPImageData(data: bytes, width: width, height: height)
+		// Convert to RGBA format if needed
+		if bitmapRep.samplesPerPixel == 4 && bytesPerPixel == 4 {
+			// Already RGBA, just copy
+			for y in 0..<height {
+				for x in 0..<width {
+					let srcIdx = y * bitmapRep.bytesPerRow + x * bytesPerPixel
+					let dstIdx = (y * width + x) * 4
+					pixelData[dstIdx] = rawBitmapData[srcIdx]
+					pixelData[dstIdx + 1] = rawBitmapData[srcIdx + 1]
+					pixelData[dstIdx + 2] = rawBitmapData[srcIdx + 2]
+					pixelData[dstIdx + 3] = rawBitmapData[srcIdx + 3]
+				}
+			}
+		} else {
+			// Unsupported format
+			throw Error.failedToDecodeWebP(filename)
+		}
+		
+		return WebPImageData(data: pixelData, width: width, height: height, bytesPerPixel: 4)
 	}
 }

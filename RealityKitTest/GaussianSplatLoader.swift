@@ -207,51 +207,91 @@ nonisolated enum GaussianSplatLoader
 	
 	// MARK: - SOG WebP Format Parsing
 	
-	/// Parse SOG files in WebP format (ZIP archive)
+	/// Parse SOG files in WebP format (ZIP archive) using the PlayCanvas spec-compliant decoder
 	nonisolated private static func parseSOGWebP(url: URL) throws -> SplatData
 	{
-		let sogData = try SOGWebPParser.parse(url: url)
+		// Use the spec-compliant PlayCanvas SOG decoder
+		let scene = try SOGDecoder.decode(contentsOf: url)
 		
-		// Convert SOGSplatData to our interleaved format
-		// Layout: position(3) + scale(3) + rotation(4) + opacity(1) + sh0(3)
-		let floatsPerSplat = 14 // 3 + 3 + 4 + 1 + 3
-		let sphericalHarmonicsFloats = 3 // Just SH0 for now
-		
-		var interleaved: [Float] = []
-		interleaved.reserveCapacity(sogData.count * floatsPerSplat)
-		
-		for i in 0..<sogData.count
+		// Log any warnings from the decoder
+		for warning in scene.warnings
 		{
-			// Position
-			interleaved.append(sogData.positions[i].x)
-			interleaved.append(sogData.positions[i].y)
-			interleaved.append(sogData.positions[i].z)
-			
-			// Scale (stored as log values, will be exponential later)
-			interleaved.append(sogData.scales[i].x)
-			interleaved.append(sogData.scales[i].y)
-			interleaved.append(sogData.scales[i].z)
-			
-			// Rotation (quaternion in RealityKit order: r, x, y, z)
-			let quat = sogData.rotations[i]
-			interleaved.append(quat.real)
-			interleaved.append(quat.imag.x)
-			interleaved.append(quat.imag.y)
-			interleaved.append(quat.imag.z)
-			
-			// Opacity (will be sigmoid activated later)
-			// For now, use a default value since SOG doesn't store explicit opacity
-			interleaved.append(0.0)
-			
-			// SH0 colors
-			interleaved.append(sogData.sh0Colors[i].x)
-			interleaved.append(sogData.sh0Colors[i].y)
-			interleaved.append(sogData.sh0Colors[i].z)
+			print("GaussianSplatLoader: SOG warning - \(warning)")
 		}
 		
-		return SplatData(count: sogData.count,
+		// Calculate spherical harmonics size
+		// SOG stores SH0 (DC) in colors array, and optional higher-order in sh
+		let shFloats: Int
+		if let sh = scene.sh
+		{
+			// Total SH coefficients = DC (3) + AC coefficients
+			shFloats = 3 + (sh.coefficientsPerChannel * 3)
+		}
+		else
+		{
+			shFloats = 3 // Just DC
+		}
+		
+		// Layout: position(3) + scale(3) + rotation(4) + opacity(1) + SH coefficients
+		let floatsPerSplat = 11 + shFloats
+		
+		var interleaved: [Float] = []
+		interleaved.reserveCapacity(scene.count * floatsPerSplat)
+		
+		for i in 0..<scene.count
+		{
+			// Position
+			let pos = scene.positions[i]
+			interleaved.append(pos.x)
+			interleaved.append(pos.y)
+			interleaved.append(pos.z)
+			
+			// Scale (already exp()'d by the decoder, need to convert back to log for RealityKit's exponential activation)
+			let scale = scene.scales[i]
+			interleaved.append(log(scale.x))
+			interleaved.append(log(scale.y))
+			interleaved.append(log(scale.z))
+			
+			// Rotation (quaternion)
+			// SOG stores as [w, x, y, z] (lane 0 = w)
+			// RealityKit expects [r, x, y, z] where r = w
+			let rot = scene.rotations[i]
+			interleaved.append(rot[0]) // w (real part)
+			interleaved.append(rot[1]) // x
+			interleaved.append(rot[2]) // y
+			interleaved.append(rot[3]) // z
+			
+			// Opacity (already in [0, 1], need to convert to logit for RealityKit's sigmoid activation)
+			let opacity = scene.opacities[i]
+			let clampedOpacity = min(max(opacity, 0.001), 0.999) // Avoid infinities
+			let logit = log(clampedOpacity / (1.0 - clampedOpacity))
+			interleaved.append(logit)
+			
+			// SH0 colors (DC component)
+			// SOG provides these as gamma-space colors: 0.5 + dc * SH_C0
+			// We need to convert back to the DC coefficient for RealityKit
+			let shC0: Float = 0.28209479177387814
+			let color = scene.colors[i]
+			interleaved.append((color.x - 0.5) / shC0)
+			interleaved.append((color.y - 0.5) / shC0)
+			interleaved.append((color.z - 0.5) / shC0)
+			
+			// Higher-order SH coefficients (if present)
+			if let sh = scene.sh
+			{
+				let coeffs = sh.coefficients(forGaussian: i)
+				for coeff in coeffs
+				{
+					interleaved.append(coeff.x)
+					interleaved.append(coeff.y)
+					interleaved.append(coeff.z)
+				}
+			}
+		}
+		
+		return SplatData(count: scene.count,
 						 floatsPerSplat: floatsPerSplat,
-						 sphericalHarmonicsFloats: sphericalHarmonicsFloats,
+						 sphericalHarmonicsFloats: shFloats,
 						 interleaved: interleaved)
 	}
 

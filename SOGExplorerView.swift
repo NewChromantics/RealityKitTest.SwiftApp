@@ -347,7 +347,7 @@ struct SplatSampleView: View {
 	}
 	
 	private func formatQuat(_ q: simd_quatf) -> String {
-		String(format: "(%.3f, %.3f, %.3f, %.3f)", q.real, q.imag.x, q.imag.y, q.imag.z)
+		String(format: "(w:%.3f, x:%.3f, y:%.3f, z:%.3f)", q.real, q.imag.x, q.imag.y, q.imag.z)
 	}
 }
 

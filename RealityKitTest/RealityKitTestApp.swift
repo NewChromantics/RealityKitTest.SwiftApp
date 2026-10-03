@@ -8,15 +8,19 @@
 import SwiftUI
 
 @main
-struct RealityKitTestApp: App {
-    var body: some Scene {
-        WindowGroup("RealityKit Viewer") {
-            ContentView()
-        }
-		
+struct RealityKitTestApp: App 
+{
+	var body: some Scene 
+	{
+		WindowGroup("Gaussian Splat Scene") 
+		{
+			ContentView()
+		}
+		/*
 		WindowGroup("SOG Explorer") {
 			SOGExplorerView()
 		}
 		.defaultSize(width: 900, height: 700)
-    }
+		 */
+	}
 }

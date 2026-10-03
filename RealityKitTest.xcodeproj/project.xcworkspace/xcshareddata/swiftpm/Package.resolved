@@ -1,6 +1,15 @@
 {
-  "originHash" : "5f14b9252662bc0955ffbbf8652a2470ec6ba5f6d444fcbc8da5eee65575b0ce",
+  "originHash" : "0a4288d43f5c47069f44e72298850d5fd25923f185bcbad8372e848a1ae66df7",
   "pins" : [
+    {
+      "identity" : "appleplatformpolyfill.swiftpackage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/NewChromantics/ApplePlatformPolyfill.SwiftPackage",
+      "state" : {
+        "branch" : "main",
+        "revision" : "d76d86d9f7f1106bd9b84e678edfdc9b91f0c84d"
+      }
+    },
     {
       "identity" : "popply.swiftpackage",
       "kind" : "remoteSourceControl",

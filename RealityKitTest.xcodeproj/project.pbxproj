@@ -7,15 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		BF2F9DA6305DA61700480502 /* SOGWebPFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF2F9DA5305DA61700480502 /* SOGWebPFormat.swift */; };
-		BF2F9DA8305DA67700480502 /* SOGExplorerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF2F9DA7305DA67700480502 /* SOGExplorerView.swift */; };
+		BF1EAF5C30617A13003E2FC4 /* ApplePlatformPolyfill in Frameworks */ = {isa = PBXBuildFile; productRef = BF1EAF5B30617A13003E2FC4 /* ApplePlatformPolyfill */; };
+		BF3F31A130716213000EE956 /* SplatScene in Frameworks */ = {isa = PBXBuildFile; productRef = BF3F31A030716213000EE956 /* SplatScene */; };
 		BF5308EF305D655600611B5D /* PopPly in Frameworks */ = {isa = PBXBuildFile; productRef = BF5308EE305D655600611B5D /* PopPly */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		BF21E817305C1BEB00557A54 /* RealityKitTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RealityKitTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		BF2F9DA5305DA61700480502 /* SOGWebPFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SOGWebPFormat.swift; sourceTree = "<group>"; };
-		BF2F9DA7305DA67700480502 /* SOGExplorerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SOGExplorerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -32,6 +30,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				BF5308EF305D655600611B5D /* PopPly in Frameworks */,
+				BF1EAF5C30617A13003E2FC4 /* ApplePlatformPolyfill in Frameworks */,
+				BF3F31A130716213000EE956 /* SplatScene in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -42,8 +42,6 @@
 			isa = PBXGroup;
 			children = (
 				BF21E819305C1BEB00557A54 /* RealityKitTest */,
-				BF2F9DA5305DA61700480502 /* SOGWebPFormat.swift */,
-				BF2F9DA7305DA67700480502 /* SOGExplorerView.swift */,
 				BF21E818305C1BEB00557A54 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -77,6 +75,8 @@
 			name = RealityKitTest;
 			packageProductDependencies = (
 				BF5308EE305D655600611B5D /* PopPly */,
+				BF1EAF5B30617A13003E2FC4 /* ApplePlatformPolyfill */,
+				BF3F31A030716213000EE956 /* SplatScene */,
 			);
 			productName = RealityKitTest;
 			productReference = BF21E817305C1BEB00557A54 /* RealityKitTest.app */;
@@ -108,6 +108,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				BF5308ED305D655600611B5D /* XCRemoteSwiftPackageReference "PopPly" */,
+				BF1EAF5A30617A13003E2FC4 /* XCRemoteSwiftPackageReference "ApplePlatformPolyfill" */,
+				BF3F319F30716213000EE956 /* XCLocalSwiftPackageReference "../SplatScene.SwiftPackage" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BF21E818305C1BEB00557A54 /* Products */;
@@ -134,8 +136,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BF2F9DA8305DA67700480502 /* SOGExplorerView.swift in Sources */,
-				BF2F9DA6305DA61700480502 /* SOGWebPFormat.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -281,7 +281,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
@@ -325,7 +325,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
@@ -369,7 +369,22 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		BF3F319F30716213000EE956 /* XCLocalSwiftPackageReference "../SplatScene.SwiftPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../SplatScene.SwiftPackage;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
+		BF1EAF5A30617A13003E2FC4 /* XCRemoteSwiftPackageReference "ApplePlatformPolyfill" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/NewChromantics/ApplePlatformPolyfill.SwiftPackage";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		BF5308ED305D655600611B5D /* XCRemoteSwiftPackageReference "PopPly" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/NewChromantics/PopPly.SwiftPackage";
@@ -381,6 +396,15 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		BF1EAF5B30617A13003E2FC4 /* ApplePlatformPolyfill */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = BF1EAF5A30617A13003E2FC4 /* XCRemoteSwiftPackageReference "ApplePlatformPolyfill" */;
+			productName = ApplePlatformPolyfill;
+		};
+		BF3F31A030716213000EE956 /* SplatScene */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SplatScene;
+		};
 		BF5308EE305D655600611B5D /* PopPly */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = BF5308ED305D655600611B5D /* XCRemoteSwiftPackageReference "PopPly" */;

@@ -11,6 +11,24 @@
       }
     },
     {
+      "identity" : "coregraphicsextensions.swiftpackage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/NewChromantics/CoreGraphicsExtensions.SwiftPackage",
+      "state" : {
+        "branch" : "main",
+        "revision" : "88c3e4e68747b1757fe3da6c021c9f4cef279401"
+      }
+    },
+    {
+      "identity" : "popcommon.swiftpackage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/NewChromantics/PopCommon.SwiftPackage",
+      "state" : {
+        "branch" : "main",
+        "revision" : "b1e328b732cdfa3659e910ba2cdc40f4cb3c5d10"
+      }
+    },
+    {
       "identity" : "popply.swiftpackage",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/NewChromantics/PopPly.SwiftPackage",

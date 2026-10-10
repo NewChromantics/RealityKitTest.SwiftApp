@@ -1,5 +1,4 @@
 {
-  "originHash" : "0a4288d43f5c47069f44e72298850d5fd25923f185bcbad8372e848a1ae66df7",
   "pins" : [
     {
       "identity" : "appleplatformpolyfill.swiftpackage",
@@ -8,15 +7,6 @@
       "state" : {
         "branch" : "main",
         "revision" : "9feac664e9ff95df228582310ac69ae93a98bc21"
-      }
-    },
-    {
-      "identity" : "coregraphicsextensions.swiftpackage",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/NewChromantics/CoreGraphicsExtensions.SwiftPackage",
-      "state" : {
-        "branch" : "main",
-        "revision" : "88c3e4e68747b1757fe3da6c021c9f4cef279401"
       }
     },
     {
@@ -36,7 +26,16 @@
         "branch" : "main",
         "revision" : "5454f211e664fcf150cff12a463b4f6154bcde5f"
       }
+    },
+    {
+      "identity" : "popsog.swiftpackage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/NewChromantics/PopSog.SwiftPackage",
+      "state" : {
+        "revision" : "93823112f1075b5b23f31a62bf0f05351daca475",
+        "version" : "0.0.1"
+      }
     }
   ],
-  "version" : 3
+  "version" : 2
 }

@@ -2,24 +2,28 @@ import SwiftUI
 import SplatScene
 import UniformTypeIdentifiers
 import simd
+internal import PopCommon
 
 let legoSplatUrl = Bundle.main.url(forResource: "lego_60k", withExtension: "ply")!
 
 struct ContentView: View 
 {
+	@State var renderStats = RenderStats()
 	@State var droppingFile = false
-	@State var scene = Scene(actors:
-								[SceneActorUid():SceneActor(position: .zero, assetUrl: legoSplatUrl)]
-	)
+	@State var scene = Self.InitialScene()
 	
 	var body: some View 
 	{
-		SplatSceneView(scene: scene)
+		SplatSceneView(scene: scene, renderStats: $renderStats)
 			.background(Color("SceneBackgroundColour"))
 			.onDrop(of: [.fileURL], isTargeted: $droppingFile)
 			{
 				providers in
 				handleDrop(providers: providers)
+			}
+			.overlay(alignment: .topLeading)
+			{
+				RenderStatsView(renderStats:renderStats)
 			}
 			.overlay(alignment: .center) 
 			{
@@ -28,6 +32,14 @@ struct ContentView: View
 					DroppingOverlay()
 				}
 			}
+	}
+	
+	static func InitialScene() -> SplatScene.Scene
+	{
+		let actors = [
+			SceneActorUid() : SceneActor(position: .zero, assetUrl: legoSplatUrl)
+		]
+		return Scene(actors:actors)
 	}
 	
 	@ViewBuilder func DroppingOverlay() -> some View
@@ -48,11 +60,11 @@ struct ContentView: View
 	{
 		guard let provider = providers.first else { return false }
 		
-		provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil)
+		//	returns cancellable Progress
+		_ = provider.loadObject(ofClass: URL.self) 
 		{
-			item, error in
-			guard let data = item as? Data,
-				  let url = URL(dataRepresentation: data, relativeTo: nil) else 
+			object, error in
+			guard let url = object else 
 			{
 				return
 			}
@@ -66,6 +78,7 @@ struct ContentView: View
 		
 		return true
 	}
+	
 }
 
 #Preview 

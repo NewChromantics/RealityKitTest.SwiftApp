@@ -14,6 +14,7 @@
 
 /* Begin PBXFileReference section */
 		BF21E817305C1BEB00557A54 /* RealityKitTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RealityKitTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BFC97FB43079339F006D2A5A /* CoreGraphicsExtensions.SwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = CoreGraphicsExtensions.SwiftPackage; path = ../CoreGraphicsExtensions.SwiftPackage; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -41,6 +42,7 @@
 		BF21E80E305C1BEB00557A54 = {
 			isa = PBXGroup;
 			children = (
+				BFC97FB43079339F006D2A5A /* CoreGraphicsExtensions.SwiftPackage */,
 				BF21E819305C1BEB00557A54 /* RealityKitTest */,
 				BF21E818305C1BEB00557A54 /* Products */,
 			);

@@ -11,10 +11,11 @@ struct ContentView: View
 	@State var renderStats = RenderStats()
 	@State var droppingFile = false
 	@State var scene = Self.InitialScene()
+	@State var renderMode = SplatSceneRenderer.metal
 	
 	var body: some View 
 	{
-		SplatSceneView(scene: scene, renderStats: $renderStats)
+		SplatSceneView(scene: scene, renderStats: $renderStats, renderer:renderMode)
 			.background(Color("SceneBackgroundColour"))
 			.onDrop(of: [.fileURL], isTargeted: $droppingFile)
 			{
@@ -23,23 +24,38 @@ struct ContentView: View
 			}
 			.overlay(alignment: .topLeading)
 			{
-				RenderStatsView(renderStats:renderStats)
+				OverlayView()
 			}
-			.overlay(alignment: .center) 
-			{
-				if droppingFile 
-				{
-					DroppingOverlay()
-				}
-			}
+			//.ignoresSafeArea()
 	}
 	
 	static func InitialScene() -> SplatScene.Scene
 	{
+		// Put cube back at origin for testing
 		let actors = [
 			SceneActorUid() : SceneActor(position: .zero, assetUrl: legoSplatUrl)
 		]
 		return Scene(actors:actors)
+	}
+	
+	@ViewBuilder func OverlayView() -> some View
+	{
+		VStack(alignment: .leading)
+		{
+			RenderStatsView(renderStats:renderStats)
+			EnumDropDown(value: $renderMode)
+				.darkBackground()
+		}
+		.controlSize(.mini)
+		.opacity(0.6)
+		.overlay(alignment: .center) 
+		{
+			if droppingFile 
+			{
+				DroppingOverlay()
+			}
+		}
+
 	}
 	
 	@ViewBuilder func DroppingOverlay() -> some View

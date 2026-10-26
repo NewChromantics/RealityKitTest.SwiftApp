@@ -43,10 +43,18 @@ struct ContentView: View
 		VStack(alignment: .leading)
 		{
 			RenderStatsView(renderStats:renderStats)
-			EnumDropDown(value: $renderMode)
-				.darkBackground()
+			
+			VStack
+			{
+				EnumDropDown(value: $renderMode)
+				Button(action:ClearScene)
+				{
+					Label("Clear Scene",systemImage: "xmark.square.fill")
+				}
+			}
+			.darkBackground()
+
 		}
-		.controlSize(.mini)
 		.opacity(0.6)
 		.overlay(alignment: .center) 
 		{
@@ -57,6 +65,7 @@ struct ContentView: View
 		}
 
 	}
+		
 	
 	@ViewBuilder func DroppingOverlay() -> some View
 	{
@@ -95,6 +104,11 @@ struct ContentView: View
 		return true
 	}
 	
+	
+	func ClearScene()
+	{
+		self.scene.actors = [:]
+	}
 }
 
 #Preview 

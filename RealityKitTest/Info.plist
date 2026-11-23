@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>UTImportedTypeDeclarations</key>
+		<array>
+			<dict>
+				<key>UTTypeIdentifier</key>
+				<string>com.playcanvas.sog</string>
+				<key>UTTypeDescription</key>
+				<string>Spatially Ordered Gaussians</string>
+				<key>UTTypeConformsTo</key>
+				<array>
+					<string>public.data</string>
+					<string>public.3d-content</string>
+				</array>
+				<key>UTTypeTagSpecification</key>
+				<dict>
+					<key>public.filename-extension</key>
+					<array>
+						<string>sog</string>
+					</array>
+				</dict>
+			</dict>
+		</array>
+	</dict>
+</plist>
+

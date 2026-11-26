@@ -155,7 +155,9 @@ struct ContentView: View
 		{
 			RenderStatsView(renderStats: renderStats)
 			CameraStateView(cameraState: cameraState)
+				
 		}
+		.font(.system(size: 8))
 		.background
 		{
 			//	react (by changing background) when dropping file
@@ -164,6 +166,7 @@ struct ContentView: View
 				Color.black
 			}
 		}
+		.allowsHitTesting(false)
 	}
 }
 

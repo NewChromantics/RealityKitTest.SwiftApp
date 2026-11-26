@@ -3,9 +3,11 @@ import SplatScene
 import simd
 import PopPly
 import PopSog
+import PopCommon
 internal import UniformTypeIdentifiers
 
 let legoSplatUrl = Bundle.main.url(forResource: "lego_60k", withExtension: "ply")!
+//let legoSplatUrl = Bundle.main.url(forResource: "garden_msplat", withExtension: "ply")!
 //let legoSplatUrl = URL(fileURLWithPath: "/Users/graham/Downloads/export.ply")
 
 
@@ -13,13 +15,15 @@ let legoSplatUrl = Bundle.main.url(forResource: "lego_60k", withExtension: "ply"
 
 struct AppToolbarView : View 
 {
+	@Binding var renderer : SplatSceneRenderer
 	var OnClickedImport : ()->Void
 	
 	var body: some View 
 	{
-		HStack(alignment: .center, spacing: 0)
+		HStack(alignment: .center, spacing: 10)
 		{
 			ImportButton()
+			EnumDropDown(value: $renderer)
 			Spacer()
 		}
 		.controlSize(.small)
@@ -50,17 +54,18 @@ struct ContentView: View
 	
 	@State var openSplatFileDialogVisible : Bool = false
 	@State var isDroppingFile = false
+	@State var renderer = SplatScene.SplatSceneRenderer.metal
 	
 	var body: some View 
 	{
 		VStack(spacing: 0)
 		{
-			AppToolbarView()
+			AppToolbarView(renderer:$renderer)
 			{
 				openSplatFileDialogVisible = true
 			}
 			
-			SplatSceneView(scene: scene, renderStats: $renderStats, renderer: .both, assetManager: assetManager, cameraState: $cameraState)
+			SplatSceneView(scene: scene, renderStats: $renderStats, renderer: renderer, assetManager: assetManager, cameraState: $cameraState)
 				.background(Color("SceneBackgroundColour"))
 				.fileImporter(isPresented: $openSplatFileDialogVisible, allowedContentTypes: [.ply,.sog], onCompletion: OnFileOpened)
 				.onDrop(of: [.fileURL], isTargeted: $isDroppingFile)
@@ -118,6 +123,14 @@ struct ContentView: View
 	
 	func SetActorAsset(assetUrl:URL,addActor:Bool=false)
 	{
+		//	get security-access (break sandbox)
+		//	this is expected to only work via .fileImporter
+		guard assetUrl.startAccessingSecurityScopedResource() else 
+		{
+			print("Failed to access security-scoped resource")
+			return
+		}
+		
 		if addActor
 		{
 			//	drop a new actor
@@ -140,6 +153,7 @@ struct ContentView: View
 	{
 		VStack
 		{
+			RenderStatsView(renderStats: renderStats)
 			CameraStateView(cameraState: cameraState)
 		}
 		.background
@@ -262,9 +276,10 @@ struct ContentView: View
 */
 #Preview 
 {
+	@Previewable @State var renderer = SplatSceneRenderer.both
 	VStack(spacing:0)
 	{
-		AppToolbarView()
+		AppToolbarView(renderer: $renderer)
 		{
 		}
 		Color.blue

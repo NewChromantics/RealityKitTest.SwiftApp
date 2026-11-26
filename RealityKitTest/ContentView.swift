@@ -54,16 +54,15 @@ struct ContentView: View
 	
 	@State var openSplatFileDialogVisible : Bool = false
 	@State var isDroppingFile = false
-	@State var renderer = SplatScene.SplatSceneRenderer.metal
+	@AppStorage("Renderer") var renderer = SplatScene.SplatSceneRenderer.metal
 	
 	var body: some View 
 	{
 		VStack(spacing: 0)
 		{
-			AppToolbarView(renderer:$renderer)
-			{
+			AppToolbarView(renderer: $renderer, OnClickedImport: {
 				openSplatFileDialogVisible = true
-			}
+			})
 			
 			SplatSceneView(scene: scene, renderStats: $renderStats, renderer: renderer, assetManager: assetManager, cameraState: $cameraState)
 				.background(Color("SceneBackgroundColour"))
